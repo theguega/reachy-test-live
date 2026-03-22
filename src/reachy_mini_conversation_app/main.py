@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 
 import gradio as gr
 from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
 from fastrtc import Stream
 from gradio.utils import get_space
 
@@ -107,6 +108,22 @@ def run(
 
     camera_worker, _, vision_manager = handle_vision_stuff(args, robot)
 
+    # MJPEG Video stream endpoint
+    async def video_feed() -> StreamingResponse:
+        """Video streaming generator for the camera worker."""
+        async def generate() -> Any:
+            while True:
+                if camera_worker:
+                    jpeg = camera_worker.get_latest_jpeg()
+                    if jpeg:
+                        yield (b"--frame\r\n"
+                               b"Content-Type: image/jpeg\r\n\r\n" + jpeg + b"\r\n")
+                await asyncio.sleep(0.05)
+        return StreamingResponse(generate(), media_type="multipart/x-mixed-replace; boundary=frame")
+
+    if settings_app and camera_worker:
+        settings_app.add_api_route("/video_feed", video_feed)
+
     movement_manager = MovementManager(
         current_robot=robot,
         camera_worker=camera_worker,
@@ -167,6 +184,9 @@ def run(
             app = FastAPI()
         else:
             app = settings_app
+
+        if camera_worker:
+            app.add_api_route("/video_feed", video_feed)
 
         personality_ui.wire_events(handler, stream_manager)
 
