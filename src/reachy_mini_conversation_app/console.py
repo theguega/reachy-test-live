@@ -230,7 +230,7 @@ class LocalStream:
             return
 
         static_dir = Path(__file__).parent / "static"
-        index_file = static_dir / "index.html"
+        index_file = static_dir / "index2.html"
 
         if hasattr(self._settings_app, "mount"):
             try:

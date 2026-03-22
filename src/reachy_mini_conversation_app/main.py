@@ -223,7 +223,11 @@ def run(
         threading.Thread(target=poll_stop_event, daemon=True).start()
 
     try:
-        stream_manager.launch()
+        launch_kwargs = {}
+        if args.gradio:
+            launch_kwargs["server_name"] = "0.0.0.0"
+
+        stream_manager.launch(**launch_kwargs)
     except KeyboardInterrupt:
         logger.info("Keyboard interruption in main thread... closing server.")
     finally:
