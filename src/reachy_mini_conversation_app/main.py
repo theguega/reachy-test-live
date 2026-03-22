@@ -6,6 +6,7 @@ import time
 import asyncio
 import argparse
 import threading
+import uvicorn
 from typing import Any, Dict, List, Optional
 
 import gradio as gr
@@ -195,15 +196,14 @@ def run(
         if camera_worker:
             app.add_api_route("/video_feed", video_feed)
 
-        # GET / -> index2.html
-        @app.get("/")
-        def _root() -> FileResponse:
-            index_file = os.path.join(current_file_path, "static", "index2.html")
-            return FileResponse(index_file)
-
         personality_ui.wire_events(handler, stream_manager)
 
         app = gr.mount_gradio_app(app, stream.ui, path="/chat")
+
+        @app.get("/", include_in_schema=False)
+        def _root() -> FileResponse:
+            index_file = os.path.join(current_file_path, "static", "index2.html")
+            return FileResponse(index_file)
     else:
         # In headless mode, wire settings_app + instance_path to console LocalStream
         stream_manager = LocalStream(
@@ -236,11 +236,10 @@ def run(
         threading.Thread(target=poll_stop_event, daemon=True).start()
 
     try:
-        launch_kwargs = {}
         if args.gradio:
-            launch_kwargs["server_name"] = "0.0.0.0"
-
-        stream_manager.launch(**launch_kwargs)
+            uvicorn.run(app, host="0.0.0.0", port=7860)
+        else:
+            stream_manager.launch()
     except KeyboardInterrupt:
         logger.info("Keyboard interruption in main thread... closing server.")
     finally:
