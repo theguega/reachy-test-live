@@ -10,7 +10,8 @@ from typing import Any, Dict, List, Optional
 
 import gradio as gr
 from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from fastrtc import Stream
 from gradio.utils import get_space
 
@@ -182,15 +183,27 @@ def run(
         stream_manager = stream.ui
         if not settings_app:
             app = FastAPI()
+            app.mount("/static", StaticFiles(directory=os.path.join(current_file_path, "static")), name="static")
         else:
             app = settings_app
+            # Reachy Mini Apps might not have mounted our local static folder yet
+            try:
+                app.mount("/static", StaticFiles(directory=os.path.join(current_file_path, "static")), name="static")
+            except Exception:
+                pass
 
         if camera_worker:
             app.add_api_route("/video_feed", video_feed)
 
+        # GET / -> index2.html
+        @app.get("/")
+        def _root() -> FileResponse:
+            index_file = os.path.join(current_file_path, "static", "index2.html")
+            return FileResponse(index_file)
+
         personality_ui.wire_events(handler, stream_manager)
 
-        app = gr.mount_gradio_app(app, stream.ui, path="/")
+        app = gr.mount_gradio_app(app, stream.ui, path="/chat")
     else:
         # In headless mode, wire settings_app + instance_path to console LocalStream
         stream_manager = LocalStream(
