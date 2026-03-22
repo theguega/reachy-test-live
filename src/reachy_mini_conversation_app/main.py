@@ -6,15 +6,15 @@ import time
 import asyncio
 import argparse
 import threading
-import uvicorn
 from typing import Any, Dict, List, Optional
 
 import gradio as gr
+import uvicorn
 from fastapi import FastAPI
-from fastapi.responses import FileResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
 from fastrtc import Stream
 from gradio.utils import get_space
+from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 
 from reachy_mini import ReachyMini, ReachyMiniApp
 from reachy_mini_conversation_app.utils import (
@@ -56,10 +56,7 @@ def run(
     logger.info("Starting Reachy Mini Conversation App")
 
     if args.no_camera and args.head_tracker is not None:
-        logger.warning(
-            "Head tracking disabled: --no-camera flag is set. "
-            "Remove --no-camera to enable head tracking."
-        )
+        logger.warning("Head tracking disabled: --no-camera flag is set. Remove --no-camera to enable head tracking.")
 
     if robot is None:
         try:
@@ -71,25 +68,17 @@ def run(
             robot = ReachyMini(**robot_kwargs)
 
         except TimeoutError as e:
-            logger.error(
-                "Connection timeout: Failed to connect to Reachy Mini daemon. "
-                f"Details: {e}"
-            )
+            logger.error(f"Connection timeout: Failed to connect to Reachy Mini daemon. Details: {e}")
             log_connection_troubleshooting(logger, args.robot_name)
             sys.exit(1)
 
         except ConnectionError as e:
-            logger.error(
-                "Connection failed: Unable to establish connection to Reachy Mini. "
-                f"Details: {e}"
-            )
+            logger.error(f"Connection failed: Unable to establish connection to Reachy Mini. Details: {e}")
             log_connection_troubleshooting(logger, args.robot_name)
             sys.exit(1)
 
         except Exception as e:
-            logger.error(
-                f"Unexpected error during robot initialization: {type(e).__name__}: {e}"
-            )
+            logger.error(f"Unexpected error during robot initialization: {type(e).__name__}: {e}")
             logger.error("Please check your configuration and try again.")
             sys.exit(1)
 
@@ -113,14 +102,15 @@ def run(
     # MJPEG Video stream endpoint
     async def video_feed() -> StreamingResponse:
         """Video streaming generator for the camera worker."""
+
         async def generate() -> Any:
             while True:
                 if camera_worker:
                     jpeg = camera_worker.get_latest_jpeg()
                     if jpeg:
-                        yield (b"--frame\r\n"
-                               b"Content-Type: image/jpeg\r\n\r\n" + jpeg + b"\r\n")
+                        yield (b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + jpeg + b"\r\n")
                 await asyncio.sleep(0.05)
+
         return StreamingResponse(generate(), media_type="multipart/x-mixed-replace; boundary=frame")
 
     if settings_app and camera_worker:
@@ -202,7 +192,7 @@ def run(
 
         @app.get("/", include_in_schema=False)
         def _root() -> FileResponse:
-            index_file = os.path.join(current_file_path, "static", "index2.html")
+            index_file = os.path.join(current_file_path, "static", "index.html")
             return FileResponse(index_file)
     else:
         # In headless mode, wire settings_app + instance_path to console LocalStream
